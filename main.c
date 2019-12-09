@@ -8,7 +8,7 @@
 #include <fcntl.h>
 #include <string.h>
 
-#define PHILOSOPER_AMOUNT 1
+#define PHILOSOPER_AMOUNT 5
 #define OPERATION_TIME 1
 #define RESULTAT "resultat.txt"
 
@@ -40,7 +40,7 @@ void valider();
 int main(int argc, char const *argv[]) {
 	srand(time(NULL));
 
-	fd = open(RESULTAT, O_WRONLY | O_CREAT | O_TRUNC);
+	fd = open(RESULTAT, O_WRONLY | O_CREAT | O_TRUNC, S_IRWXU | S_IRWXG | S_IRWXO);
 	if (fd == -1) {
 		perror("open");
 		exit(EXIT_FAILURE);
@@ -223,7 +223,9 @@ void valider() {
 				break;
 			}
 			case '2': {
-
+				printf("Veuillez un code de ligne svp (entre 0 et %d)\n", diningPhilosophers.total_meals);
+				int line;
+				scanf("%d", &line);
 				break;
 			}
 			case '3': {
