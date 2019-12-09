@@ -3,11 +3,17 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <pthread.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+#include <fcntl.h>
+#include <string.h>
 
-#define PHILOSOPER_AMOUNT 5
-#define OPERATION_TIME 3
+#define PHILOSOPER_AMOUNT 1
+#define OPERATION_TIME 1
+#define RESULTAT "resultat.txt"
 
 int code = 0;
+int fd = -1;
 
 typedef enum  {
 	THINKING, HUNGRY, EATING
@@ -33,6 +39,12 @@ void valider();
 
 int main(int argc, char const *argv[]) {
 	srand(time(NULL));
+
+	fd = open(RESULTAT, O_WRONLY | O_CREAT | O_TRUNC);
+	if (fd == -1) {
+		perror("open");
+		exit(EXIT_FAILURE);
+	}
 
 	pthread_t tids[PHILOSOPER_AMOUNT];
 
@@ -82,12 +94,26 @@ void *philosopher(void *param) {
 	while (1) {
 		int think_time = (rand() % OPERATION_TIME) + 1;
 		int check_forks_time = (rand() % OPERATION_TIME) + 1;
+		char buf[100];
+		char tmp[100];
 
-		printf("%d Philosopher %d THINKING\n", code++, philosopher);
+		sprintf(buf, "%d", code++);
+		strcat(buf, "\tPhilosopher ");
+		sprintf(tmp, "%d", philosopher);
+		strcat(buf, tmp);
+		strcat(buf, "\tTHINKING\n\0");
+		write(fd, buf, strlen(buf));
+
 		sleep(think_time);
 		pickup_forks(philosopher);
 	
-		printf("%d Philosopher %d EATING\n", code++, philosopher);
+		sprintf(buf, "%d", code++);
+		strcat(buf, "\tPhilosopher ");
+		sprintf(tmp, "%d", philosopher);
+		strcat(buf, tmp);
+		strcat(buf, "\tEATING\n\0");
+		write(fd, buf, strlen(buf));
+
 		sleep(check_forks_time);
 		return_forks(philosopher);
 
@@ -159,5 +185,59 @@ void check_forks(int philosopher) {
 }
 
 void valider() {
+	char input = '0';
+	int tour = 0;
 
+	while (input != '5') {
+
+		printf("\n \
+			1 - Consulter résultat\n \
+			2 - Modifier le nom d'un philosophe\n \
+			3 - Supprimer le nom d'un philosophe\n \
+			4 - Modifier le nom et l'action d'un philosophe\n \
+			5 - Quitter\n");
+		if (tour) while ((input = getchar()) != '\n' && input != EOF) {}
+		printf("Veuillez taper '1' ou '2' ou '3' ou '4' ou '5' svp\n");
+		scanf("%c", &input);
+
+		while (input != '1' && input != '2' && input != '3' && input != '4' && input != '5') {
+			while ((input = getchar()) != '\n' && input != EOF) {}
+			printf("Veuillez taper '1' ou '2' ou '3' ou '4' ou '5' svp\n");
+			scanf("%c", &input);
+		}
+
+		switch (input) {
+			case '1': {
+				pid_t pid = fork();
+				if (pid == -1) {
+					perror("fork()");
+					exit(EXIT_FAILURE);
+				}
+				if (!pid) {
+					execlp("less", "less", RESULTAT, (char*)NULL);
+				}
+				if (waitpid(pid, NULL, 0) == -1) {
+					perror("waitpid()");
+					exit(EXIT_FAILURE);
+				}
+				break;
+			}
+			case '2': {
+
+				break;
+			}
+			case '3': {
+
+				break;
+			}
+			case '4': {
+				
+				break;
+			}
+			case '5': {
+				break;
+			}
+		}
+		tour += 1;
+	}
 }
