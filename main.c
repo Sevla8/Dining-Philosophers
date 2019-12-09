@@ -29,6 +29,7 @@ void *philosopher(void*);
 void pickup_forks(int);
 void return_forks(int);
 void check_forks(int);
+void valider();
 
 int main(int argc, char const *argv[]) {
 	srand(time(NULL));
@@ -70,6 +71,8 @@ int main(int argc, char const *argv[]) {
 		exit(EXIT_FAILURE);
 	}
 
+	valider();
+
 	exit(EXIT_SUCCESS);
 }
 
@@ -83,7 +86,7 @@ void *philosopher(void *param) {
 		printf("%d Philosopher %d THINKING\n", code++, philosopher);
 		sleep(think_time);
 		pickup_forks(philosopher);
-		
+	
 		printf("%d Philosopher %d EATING\n", code++, philosopher);
 		sleep(check_forks_time);
 		return_forks(philosopher);
@@ -153,4 +156,8 @@ void check_forks(int philosopher) {
 			exit(EXIT_FAILURE);
 		}
 	}
+}
+
+void valider() {
+
 }
