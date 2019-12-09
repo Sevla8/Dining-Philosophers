@@ -7,6 +7,8 @@
 #define PHILOSOPER_AMOUNT 5
 #define OPERATION_TIME 3
 
+int code = 0;
+
 typedef enum  {
 	THINKING, HUNGRY, EATING
 } State;
@@ -17,7 +19,8 @@ typedef struct {
 	State states[PHILOSOPER_AMOUNT];
 	pthread_cond_t conditions[PHILOSOPER_AMOUNT];
 	int total_wait_time[PHILOSOPER_AMOUNT];
-	int count[PHILOSOPER_AMOUNT];
+	int meals[PHILOSOPER_AMOUNT];
+	int total_meals;
 } TheDiningPhilosophers;
 
 TheDiningPhilosophers diningPhilosophers;
@@ -35,7 +38,7 @@ int main(int argc, char const *argv[]) {
 	for (int i = 0; i < PHILOSOPER_AMOUNT; i += 1) {
 		diningPhilosophers.philosophers[i] = i;
 		diningPhilosophers.states[i] = THINKING;
-		diningPhilosophers.count[i] = 0;
+		diningPhilosophers.meals[i] = 0;
 		diningPhilosophers.total_wait_time[i] = 0;
 		if (pthread_cond_init(&diningPhilosophers.conditions[i], NULL)) {
 			perror("pthread_cond_init");
@@ -43,6 +46,7 @@ int main(int argc, char const *argv[]) {
 		}
 	}
 
+	diningPhilosophers.total_meals = 0;
 	if (pthread_mutex_init(&diningPhilosophers.mutex, NULL)) {
 		perror("pthread_mutex_init");
 		exit(EXIT_FAILURE);
@@ -76,15 +80,15 @@ void *philosopher(void *param) {
 		int think_time = (rand() % OPERATION_TIME) + 1;
 		int check_forks_time = (rand() % OPERATION_TIME) + 1;
 
-		printf("Philosopher %d THINKING\n", philosopher);
+		printf("%d Philosopher %d THINKING\n", code++, philosopher);
 		sleep(think_time);
 		pickup_forks(philosopher);
 		
-		printf("Philosopher %d EATING\n", philosopher);
+		printf("%d Philosopher %d EATING\n", code++, philosopher);
 		sleep(check_forks_time);
 		return_forks(philosopher);
 
-		if (diningPhilosophers.count[philosopher] == PHILOSOPER_AMOUNT) {
+		if (diningPhilosophers.meals[philosopher] == PHILOSOPER_AMOUNT) {
 			pthread_exit(NULL);
 		}
 	}
@@ -98,7 +102,7 @@ void pickup_forks(int philosopher) {
 
 	diningPhilosophers.states[philosopher] = HUNGRY;
 	// printf("Philosopher %d HUNGRY\n", philosopher);
-	
+
 	check_forks(philosopher);
 	if (diningPhilosophers.states[philosopher] != EATING) {
 		if (pthread_cond_wait(&diningPhilosophers.conditions[philosopher], &diningPhilosophers.mutex)) {
@@ -119,7 +123,8 @@ void return_forks(int philosopher) {
 		exit(EXIT_FAILURE);
 	}
 
-	diningPhilosophers.count[philosopher] += 1;
+	diningPhilosophers.meals[philosopher] += 1;
+	diningPhilosophers.total_meals += 1;
 	diningPhilosophers.states[philosopher] = THINKING;
 
 	int left_philosopher = (philosopher + PHILOSOPER_AMOUNT - 1) % PHILOSOPER_AMOUNT;
