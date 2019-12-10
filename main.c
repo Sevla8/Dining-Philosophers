@@ -5,10 +5,11 @@
 #include <pthread.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <sys/stat.h>
 #include <fcntl.h>
 #include <string.h>
 
-#define PHILOSOPER_AMOUNT 5
+#define PHILOSOPER_AMOUNT 2
 #define OPERATION_TIME 1
 #define RESULTAT "resultat.txt"
 
@@ -40,7 +41,7 @@ void valider();
 int main(int argc, char const *argv[]) {
 	srand(time(NULL));
 
-	fd = open(RESULTAT, O_WRONLY | O_CREAT | O_TRUNC, S_IRWXU | S_IRWXG | S_IRWXO);
+	fd = open(RESULTAT, O_RDWR | O_CREAT | O_TRUNC, S_IRWXU | S_IRWXG | S_IRWXO);
 	if (fd == -1) {
 		perror("open");
 		exit(EXIT_FAILURE);
@@ -84,6 +85,8 @@ int main(int argc, char const *argv[]) {
 	}
 
 	valider();
+
+	close(fd);
 
 	exit(EXIT_SUCCESS);
 }
@@ -214,7 +217,7 @@ void valider() {
 					exit(EXIT_FAILURE);
 				}
 				if (!pid) {
-					execlp("less", "less", RESULTAT, (char*)NULL);
+					execlp("cat", "cat", RESULTAT, (char*)NULL);
 				}
 				if (waitpid(pid, NULL, 0) == -1) {
 					perror("waitpid()");
@@ -223,12 +226,97 @@ void valider() {
 				break;
 			}
 			case '2': {
-				printf("Veuillez un code de ligne svp (entre 0 et %d)\n", diningPhilosophers.total_meals);
+				printf("Veuillez choisir un code de ligne svp (entre 0 et %d)\n", diningPhilosophers.total_meals*2);
 				int line;
 				scanf("%d", &line);
 				break;
 			}
 			case '3': {
+				printf("Veuillez choisir un code de ligne svp (entre 0 et %d)\n", diningPhilosophers.total_meals*2);
+				int line;
+				scanf("%d", &line);
+
+				struct stat bufStat;
+				if (fstat(fd, &bufStat) == -1) {
+					perror("stat()");
+					exit(EXIT_FAILURE);
+				}
+				int size = (int) bufStat.st_size;
+
+				if (lockf(fd, F_TLOCK, size) == -1) {	// ou F_LOCK
+					perror("lockf");
+					exit(EXIT_FAILURE);
+				}
+
+				int fd_tmp = open("tmp.txt", O_WRONLY | O_CREAT | O_TRUNC, S_IRWXU | S_IRWXG | S_IRWXO);
+				if (fd_tmp == -1) {
+					perror("open");
+					exit(EXIT_FAILURE);
+				}
+
+				if (lseek(fd, 0, SEEK_SET) == -1) {
+					perror("lseek");
+					exit(EXIT_FAILURE);
+				}
+
+				char c[1];
+				int line_nb = 0;
+				while (line_nb < line) {
+					memset(c, 0, 1);
+
+					if (read(fd, c, sizeof(char)) == -1) {
+						perror("read");
+						exit(EXIT_FAILURE);
+					}
+
+					if (write(fd_tmp, c, sizeof(char)) == -1) {
+						perror("write");
+						exit(EXIT_FAILURE);
+					}
+
+					if (c[0] == '\n') line_nb += 1;
+				}
+
+				if (read(fd, c, sizeof(char)) == -1) {
+					perror("read");
+					exit(EXIT_FAILURE);
+				}
+				while (c[0] != '\n') {
+					memset(c, 0, 1);
+
+					if (read(fd, c, sizeof(char)) == -1) {
+						perror("read");
+						exit(EXIT_FAILURE);
+					}
+				}
+
+				while (line_nb < diningPhilosophers.total_meals*2 - 1) {
+					memset(c, 0, 1);
+
+					if (read(fd, c, sizeof(char)) == -1) {
+						perror("read");
+						exit(EXIT_FAILURE);
+					}
+
+					if (write(fd_tmp, c, sizeof(char)) == -1) {
+						perror("write");
+						exit(EXIT_FAILURE);
+					}
+
+					if (c[0] == '\n') line_nb += 1;
+				}
+
+				if (lockf(fd, F_ULOCK, size) == -1) {
+					perror("lockf");
+					exit(EXIT_FAILURE);
+				}
+
+				close(fd_tmp);
+
+				if (rename("tmp.txt", RESULTAT) == -1) {
+					perror("rename");
+					exit(EXIT_FAILURE);
+				}
 
 				break;
 			}
